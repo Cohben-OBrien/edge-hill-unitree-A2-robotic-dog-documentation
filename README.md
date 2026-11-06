@@ -815,14 +815,47 @@ ip addr show enp3s0          # should show 192.168.124.100/24
 ping -c 4 192.168.124.162
 ```
 
-### 9.5 Mounting a PC2 folder on the laptop (sshfs)
+### 9.5 SSH into the robot
+
+Once the ping succeeds, log into the PC2 development computer:
+
+```bash
+ssh <username>@192.168.124.162
+```
+
+Replace `<username>` with the username from the printed guide. Host: `192.168.124.162`.
+
+> [!IMPORTANT]
+> **Login details**
+>
+> The username and password for PC2 are not published in this README. They can be found in the printed version of this document (Section 9.5). If you do not have access to a printed copy, ask the technician or your supervisor.
+
+The first time you connect, type yes to accept the host key. You are now working on PC2 and can run ROS 2 commands against the robot:
+
+```bash
+ros2 topic list
+ros2 topic echo /sportmodestate
+```
+
+> [!NOTE]
+> **Tips for development**
+>
+> Copy files to PC2:  scp my_node.py &lt;username&gt;@192.168.124.162:~/
+>
+> VS Code: install the Remote-SSH extension and connect to &lt;username&gt;@192.168.124.162 to edit code directly on PC2.
+>
+> Run nodes that talk to the robot on PC2, not on the laptop — the laptop cannot reach the 123 control subnet.
+>
+> Keep the login details within the team; do not post them in public repositories or chats.
+
+### 9.6 Mounting a PC2 folder on the laptop (sshfs)
 
 sshfs lets you open a folder on the PC2 development computer as if it were a folder on your laptop. You can then edit the code on PC2 with any editor or file manager on the laptop. The files stay on PC2; nothing is copied, and every save goes straight to the robot.
 
 > [!NOTE]
 > **Edit on the laptop, run on PC2**
 >
-> The mount is for editing files only. Build and run your code on PC2 in an SSH session ([Section 9.8](#98-ssh-into-the-robot)), because only PC2 can reach the 123 control subnet ([Section 10.3](#103-use-the-sdk-on-the-development-pc-not-an-external-computer)). Building large projects through the mount is also very slow.
+> The mount is for editing files only. Build and run your code on PC2 in an SSH session ([Section 9.5](#95-ssh-into-the-robot)), because only PC2 can reach the 123 control subnet ([Section 10.3](#103-use-the-sdk-on-the-development-pc-not-an-external-computer)). Building large projects through the mount is also very slow.
 
 #### Step 1 – Install sshfs on the laptop
 
@@ -881,7 +914,7 @@ ssh-keygen -t ed25519            # press Enter to accept the defaults
 ssh-copy-id <username>@192.168.124.162
 ```
 
-### 9.6 Wireless connection (in progress)
+### 9.7 Wireless connection (in progress)
 
 A wireless (Wi-Fi) connection to the robot is also possible, which would let developers connect to PC2 without the programming cable. This is currently being set up and tested and is not yet available for general use.
 
@@ -895,7 +928,7 @@ A wireless (Wi-Fi) connection to the robot is also possible, which would let dev
 - Even once wireless is available, use the wired connection for anything that sends motion commands to the robot, as a dropped Wi-Fi link can stall a control loop ([Section 1.5](#15-general-safety-rules)).
 - Wireless will be best suited to monitoring, file transfer and high-level development work.
 
-### 9.7 Troubleshooting
+### 9.8 Troubleshooting
 
 | Problem | Check |
 |---|---|
@@ -904,41 +937,8 @@ A wireless (Wi-Fi) connection to the robot is also possible, which would let dev
 | ssh: permission denied | Check the username and password are typed exactly as shown in the printed guide. |
 | Host key warning after a robot re-image | Run ssh-keygen -R 192.168.124.162 and connect again. |
 | ros2 topic list shows no robot topics | Source the Unitree ROS 2 setup script on PC2 and check the PC1 aviation-plug cable is connected. |
-| sshfs folder freezes or shows “Transport endpoint is not connected” | The connection to PC2 was lost. Run fusermount -uz ~/a2_pc2, check the cable and ping, then mount again ([Section 9.5](#95-mounting-a-pc2-folder-on-the-laptop-sshfs)). |
+| sshfs folder freezes or shows “Transport endpoint is not connected” | The connection to PC2 was lost. Run fusermount -uz ~/a2_pc2, check the cable and ping, then mount again ([Section 9.6](#96-mounting-a-pc2-folder-on-the-laptop-sshfs)). |
 | Robot does not respond to commands | Check the robot is in walking mode and not locked or damping. Remember the handheld controller also sends commands. |
-
-### 9.8 SSH into the robot
-
-Once the ping succeeds, log into the PC2 development computer:
-
-```bash
-ssh <username>@192.168.124.162
-```
-
-Replace `<username>` with the username from the printed guide. Host: `192.168.124.162`.
-
-> [!IMPORTANT]
-> **Login details**
->
-> The username and password for PC2 are not published in this README. They can be found in the printed version of this document (Section 9.8). If you do not have access to a printed copy, ask the technician or your supervisor.
-
-The first time you connect, type yes to accept the host key. You are now working on PC2 and can run ROS 2 commands against the robot:
-
-```bash
-ros2 topic list
-ros2 topic echo /sportmodestate
-```
-
-> [!NOTE]
-> **Tips for development**
->
-> Copy files to PC2:  scp my_node.py &lt;username&gt;@192.168.124.162:~/
->
-> VS Code: install the Remote-SSH extension and connect to &lt;username&gt;@192.168.124.162 to edit code directly on PC2.
->
-> Run nodes that talk to the robot on PC2, not on the laptop — the laptop cannot reach the 123 control subnet.
->
-> Keep the login details within the team; do not post them in public repositories or chats.
 
 ### 9.9 Carrying a laptop on the robot
 
@@ -1006,7 +1006,7 @@ Your laptop is still useful: use it to write and edit code, then copy the code t
 
 ### 10.4 Development workflow
 
-1. Connect your laptop to PC2 and log in over SSH (Sections [9.4](#94-set-up-the-ethernet-connection-124-subnet) and [9.8](#98-ssh-into-the-robot)).
+1. Connect your laptop to PC2 and log in over SSH (Sections [9.4](#94-set-up-the-ethernet-connection-124-subnet) and [9.5](#95-ssh-into-the-robot)).
 1. Write or edit your code, either directly on PC2 using VS Code Remote-SSH, or on your laptop and then copy it across with scp or a USB drive ([Section 6.4](#64-usb-c-ports)).
 1. Build (C++) or run (Python) the program on PC2 in your SSH session.
 1. Tell the program which network interface is connected to PC1 (see [10.5](#105-checking-the-sdk-and-network-interface-on-pc2)).
