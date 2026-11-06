@@ -102,7 +102,7 @@ There are two independent ways to stop the robot in an emergency:
 - Never put hands, feet or clothing near the legs while the robot is powered and not locked.
 - Keep all personnel clear during startup and when standing the robot up.
 - Use a wired connection for anything that sends motion commands. A dropped Wi-Fi link can stall a control loop.
-- If a laptop must ride on the robot while it moves, it must be secured with two proper retractable ratchet straps and the cable kept clear of the legs ([Section 9.8](#98-carrying-a-laptop-on-the-robot)).
+- If a laptop must ride on the robot while it moves, it must be secured with two proper retractable ratchet straps and the cable kept clear of the legs ([Section 9.9](#99-carrying-a-laptop-on-the-robot)).
 - The handheld controller stays active while SDK/ROS programs run, and both sets of commands act together. Keep the controller with the operator at all times.
 - When testing new code, start at low speed and keep a hand on the emergency stop.
 - Check both batteries are fully latched before operation. Remove batteries for long-term storage and follow lithium-battery safety guidance.
@@ -219,7 +219,7 @@ Examples of payloads the A2 Pro can carry:
 - Survey equipment and extra computing (edge AI) units
 - Radios and communications equipment
 - Tools, spare parts and supplies
-- A laptop for SLAM mapping or debugging, strapped down as described in [Section 9.8](#98-carrying-a-laptop-on-the-robot)
+- A laptop for SLAM mapping or debugging, strapped down as described in [Section 9.9](#99-carrying-a-laptop-on-the-robot)
 
 The robot provides power and data for payloads through its side and docking-station ports: 12 V, 24 V and battery-voltage outputs, CAN, RS-485, Gigabit Ethernet and USB (see [Section 6](#6-onboard-computers-pc1-and-pc2)).
 
@@ -703,11 +703,11 @@ This section explains how to prepare a laptop, connect it to the robot and log i
 > [!WARNING]
 > **ROS 2 Humble on Ubuntu 20.04**
 >
-> ROS 2 Humble’s main (Tier 1) platform is Ubuntu 22.04. On Ubuntu 20.04 it is a Tier 3 platform: there are no ready-made apt packages, so Humble must be built from source ([Section 9.3](#93-install-ros-2-humble-source-build-on-2004)). The build takes a long time and needs around 10–15 GB of free disk space. Using Docker (an osrf/ros:humble container) is a quicker alternative on 20.04.
+> The official ROS 2 apt repository only provides Humble packages for Ubuntu 22.04. On Ubuntu 20.04, Humble is installed as ready-made deb packages from NVIDIA’s Isaac ROS apt repository, which publishes Humble builds for 20.04 (amd64 and arm64). This is not an official ROS 2 platform, so follow [Section 9.3](#93-install-ros-2-humble-deb-packages) exactly and do not mix it with a source build or an older ROS 2 install such as Foxy.
 
 ### 9.2 Prepare Ubuntu 20.04
 
-Set a UTF-8 locale and install the build tools:
+Set a UTF-8 locale and install the basic tools:
 
 ```bash
 sudo apt update && sudo apt install -y locales
@@ -719,37 +719,67 @@ sudo apt install -y software-properties-common curl git
 sudo add-apt-repository universe
 ```
 
-### 9.3 Install ROS 2 Humble (source build on 20.04)
+### 9.3 Install ROS 2 Humble (deb packages)
 
-Add the ROS 2 repository (needed for the development tools), then download and build Humble:
+Humble is installed with apt from two repositories: NVIDIA’s Isaac ROS repository, which provides the Humble packages for Ubuntu 20.04, and the official ROS 2 repository, which provides the supporting tools.
+
+> [!WARNING]
+> **Remove any older ROS 2 first**
+>
+> If the laptop already has another ROS 2 version installed (for example Foxy, the official ROS 2 for Ubuntu 20.04), remove it before installing Humble, or apt may report held broken packages. Do not source two ROS 2 versions in the same terminal.
+
+#### Step 1 – Add the NVIDIA Isaac ROS repository
 
 ```bash
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-  -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-  http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+k=/usr/share/keyrings/nvidia-isaac-ros.gpg
+curl -fsSL https://isaac.download.nvidia.com/isaac-ros/repos.key \
+  | sudo gpg --dearmor -o $k
+echo "deb [signed-by=$k] \
+https://isaac.download.nvidia.com/isaac-ros/ubuntu/main focal main" \
+  | sudo tee /etc/apt/sources.list.d/nvidia-isaac-ros.list
+```
+
+#### Step 2 – Add the official ROS 2 repository
+
+```bash
+r=/usr/share/keyrings/ros-archive-keyring.gpg
+sudo curl -sSL -o $r \
+  https://raw.githubusercontent.com/ros/rosdistro/master/ros.key
+echo "deb [arch=$(dpkg --print-architecture) signed-by=$r] \
+http://packages.ros.org/ros2/ubuntu focal main" \
   | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-sudo apt update
-sudo apt install -y python3-colcon-common-extensions python3-rosdep \
-  python3-vcstool python3-pip build-essential cmake wget
-
-mkdir -p ~/ros2_humble/src && cd ~/ros2_humble
-vcs import --input https://raw.githubusercontent.com/ros2/ros2/humble/ros2.repos src
-sudo rosdep init; rosdep update
-rosdep install --from-paths src --ignore-src -y --rosdistro humble \
-  --os=ubuntu:focal --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers"
-colcon build --symlink-install
 ```
 
-When the build finishes, add ROS 2 to every new terminal and check it works:
+#### Step 3 – Install ROS 2 Humble
 
 ```bash
-echo "source ~/ros2_humble/install/local_setup.bash" >> ~/.bashrc
-source ~/.bashrc
-ros2 run demo_nodes_cpp talker     # in a second terminal: ros2 run demo_nodes_py listener
+sudo apt update
+# full install, including RViz and the demos
+sudo apt install -y ros-humble-desktop
+# colcon, rosdep and other build tools
+sudo apt install -y ros-dev-tools
 ```
 
-Follow the official [ROS 2 Humble source installation guide](https://docs.ros.org/en/humble/Installation/Alternatives/Ubuntu-Development-Setup.html) if any step fails, as package names change over time.
+On a laptop without a desktop (or to save space), install `ros-humble-ros-base` instead of `ros-humble-desktop`.
+
+#### Step 4 – Set up and test
+
+Add ROS 2 to every new terminal, then check it works:
+
+```bash
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+ros2 run demo_nodes_cpp talker
+# then, in a second terminal:
+ros2 run demo_nodes_py listener
+```
+
+If the listener prints the talker’s messages, ROS 2 Humble is installed correctly.
+
+> [!NOTE]
+> **Initialise rosdep (optional)**
+>
+> If you will build ROS 2 packages from source in your own workspace, also run `sudo rosdep init` and then `rosdep update`.
 
 ### 9.4 Set up the Ethernet connection (124 subnet)
 
@@ -785,7 +815,73 @@ ip addr show enp3s0          # should show 192.168.124.100/24
 ping -c 4 192.168.124.162
 ```
 
-### 9.5 Wireless connection (in progress)
+### 9.5 Mounting a PC2 folder on the laptop (sshfs)
+
+sshfs lets you open a folder on the PC2 development computer as if it were a folder on your laptop. You can then edit the code on PC2 with any editor or file manager on the laptop. The files stay on PC2; nothing is copied, and every save goes straight to the robot.
+
+> [!NOTE]
+> **Edit on the laptop, run on PC2**
+>
+> The mount is for editing files only. Build and run your code on PC2 in an SSH session ([Section 9.8](#98-ssh-into-the-robot)), because only PC2 can reach the 123 control subnet ([Section 10.3](#103-use-the-sdk-on-the-development-pc-not-an-external-computer)). Building large projects through the mount is also very slow.
+
+#### Step 1 – Install sshfs on the laptop
+
+```bash
+sudo apt update
+sudo apt install -y sshfs
+```
+
+#### Step 2 – Create a mount point
+
+Make an empty folder on the laptop that the PC2 folder will appear in:
+
+```bash
+mkdir -p ~/a2_pc2
+```
+
+#### Step 3 – Mount the PC2 folder
+
+With the laptop connected on the 124 subnet ([Section 9.4](#94-set-up-the-ethernet-connection-124-subnet)), mount the home folder of the PC2 user. Enter the SSH password from the printed guide when asked.
+
+```bash
+sshfs <username>@192.168.124.162:/home/<username> ~/a2_pc2 \
+  -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+```
+
+To mount just one project folder instead, change the path after the colon, for example `<username>@192.168.124.162:/home/<username>/ros2_ws`. The `reconnect` and `ServerAlive` options help the mount recover from short drops in the connection.
+
+#### Step 4 – Check the mount
+
+```bash
+ls ~/a2_pc2
+df -h ~/a2_pc2
+```
+
+You should see the files from PC2. The folder can now be opened in your editor (for example `code ~/a2_pc2` for VS Code) or in the file manager.
+
+#### Step 5 – Unmount when finished
+
+Always unmount before unplugging the programming cable or shutting the robot down:
+
+```bash
+fusermount -u ~/a2_pc2
+```
+
+> [!WARNING]
+> **Unplugging while mounted**
+>
+> If the cable is unplugged or the robot is powered off while the folder is mounted, the mount can freeze and programs that touch it may hang. Force it to unmount with `fusermount -uz ~/a2_pc2`, then mount again once the connection is back. Save your work before unplugging.
+
+#### Optional – Log in without typing the password
+
+To avoid entering the password every time you mount or SSH, set up an SSH key from your own laptop. Ask the technician before adding keys to PC2.
+
+```bash
+ssh-keygen -t ed25519            # press Enter to accept the defaults
+ssh-copy-id <username>@192.168.124.162
+```
+
+### 9.6 Wireless connection (in progress)
 
 A wireless (Wi-Fi) connection to the robot is also possible, which would let developers connect to PC2 without the programming cable. This is currently being set up and tested and is not yet available for general use.
 
@@ -799,7 +895,7 @@ A wireless (Wi-Fi) connection to the robot is also possible, which would let dev
 - Even once wireless is available, use the wired connection for anything that sends motion commands to the robot, as a dropped Wi-Fi link can stall a control loop ([Section 1.5](#15-general-safety-rules)).
 - Wireless will be best suited to monitoring, file transfer and high-level development work.
 
-### 9.6 Troubleshooting
+### 9.7 Troubleshooting
 
 | Problem | Check |
 |---|---|
@@ -808,9 +904,10 @@ A wireless (Wi-Fi) connection to the robot is also possible, which would let dev
 | ssh: permission denied | Check the username and password are typed exactly as shown in the printed guide. |
 | Host key warning after a robot re-image | Run ssh-keygen -R 192.168.124.162 and connect again. |
 | ros2 topic list shows no robot topics | Source the Unitree ROS 2 setup script on PC2 and check the PC1 aviation-plug cable is connected. |
+| sshfs folder freezes or shows “Transport endpoint is not connected” | The connection to PC2 was lost. Run fusermount -uz ~/a2_pc2, check the cable and ping, then mount again ([Section 9.5](#95-mounting-a-pc2-folder-on-the-laptop-sshfs)). |
 | Robot does not respond to commands | Check the robot is in walking mode and not locked or damping. Remember the handheld controller also sends commands. |
 
-### 9.7 SSH into the robot
+### 9.8 SSH into the robot
 
 Once the ping succeeds, log into the PC2 development computer:
 
@@ -823,7 +920,7 @@ Replace `<username>` with the username from the printed guide. Host: `192.168.12
 > [!IMPORTANT]
 > **Login details**
 >
-> The username and password for PC2 are not published in this README. They can be found in the printed version of this document (Section 9.7). If you do not have access to a printed copy, ask the technician or your supervisor.
+> The username and password for PC2 are not published in this README. They can be found in the printed version of this document (Section 9.8). If you do not have access to a printed copy, ask the technician or your supervisor.
 
 The first time you connect, type yes to accept the host key. You are now working on PC2 and can run ROS 2 commands against the robot:
 
@@ -843,7 +940,7 @@ ros2 topic echo /sportmodestate
 >
 > Keep the login details within the team; do not post them in public repositories or chats.
 
-### 9.8 Carrying a laptop on the robot
+### 9.9 Carrying a laptop on the robot
 
 Sometimes a laptop needs to stay directly connected to the robot while it is moving, for example for SLAM mapping, debugging, or moving outside the area where a wireless connection could or would disconnect. In these cases the laptop can be strapped securely on top of the robot.
 
@@ -909,7 +1006,7 @@ Your laptop is still useful: use it to write and edit code, then copy the code t
 
 ### 10.4 Development workflow
 
-1. Connect your laptop to PC2 and log in over SSH (Sections [9.4](#94-set-up-the-ethernet-connection-124-subnet) and [9.7](#97-ssh-into-the-robot)).
+1. Connect your laptop to PC2 and log in over SSH (Sections [9.4](#94-set-up-the-ethernet-connection-124-subnet) and [9.8](#98-ssh-into-the-robot)).
 1. Write or edit your code, either directly on PC2 using VS Code Remote-SSH, or on your laptop and then copy it across with scp or a USB drive ([Section 6.4](#64-usb-c-ports)).
 1. Build (C++) or run (Python) the program on PC2 in your SSH session.
 1. Tell the program which network interface is connected to PC1 (see [10.5](#105-checking-the-sdk-and-network-interface-on-pc2)).
